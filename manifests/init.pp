@@ -16,16 +16,22 @@ class centrifydc (
   $default_group_ignore = $centrifydc::params::default_group_ignore
 
   # Install the latest Centrify Express client and join domain
-  package { centrifydc:
+  package { CentrifyDC:
     ensure => latest,
     notify => Exec["adjoin"]
+  }
+
+# Install the latest Centrify Express ssh
+  package { CentrifyDC-openssh:
+    ensure => latest,
+    require => Package["CentrifyDC"]
   }
 
   # Join the domain
   exec { "adjoin":
     path    => $centrifydc::params::exec_path,
     returns => 15,
-    command => "adjoin -w -S ${ad_domain}",
+    command => "adjoin -w -p ADD_YOUR_PASSWORD -u ADD_DOMAIN_ADMIN_USER@${ad_domain} -c ADD_YOUR_SERVERs_OU' -S ${ad_domain}",
     unless  => "adinfo -d | grep ${ad_domain}",
     notify  => Exec["addns"]
   }
@@ -44,48 +50,81 @@ class centrifydc (
       group   => root,
       mode    => 644,
       content => template('centrifydc/centrifydc.conf.erb'),
-      require => Package["centrifydc"];
+      require => Package["CentrifyDC"];
+
+    '/etc/nsswitch.conf':
+      owner   => root,
+      group   => root,
+      mode    => 644,
+      content => template('centrifydc/nsswitch.conf.erb'),
+      require => Package["CentrifyDC","CentrifyDC-openssh"];
+
+    '/etc/centrifydc/ssh/sshd_config':
+      owner   => root,
+      group   => root,
+      mode    => 644,
+      content => template('centrifydc/sshd_config.erb'),
+      require => Package["CentrifyDC","CentrifyDC-openssh"];
+
 
     '/etc/centrifydc/users.allow':
       owner   => root,
       group   => root,
       mode    => 644,
       content => template("centrifydc/users.allow.erb"),
-      require => Package["centrifydc"];
+      require => Package["CentrifyDC"];
 
     '/etc/centrifydc/groups.allow':
       owner   => root,
       group   => root,
       mode    => 644,
       content => template('centrifydc/groups.allow.erb'),
-      require => Package['centrifydc'];
+      require => Package['CentrifyDC'];
 
     '/etc/centrifydc/user.ignore':
       owner   => root,
       group   => root,
       mode    => 644,
       content => template('centrifydc/user.ignore.erb'),
-      require => Package['centrifydc'];
+      require => Package['CentrifyDC'];
 
     '/etc/centrifydc/group.ignore':
       owner   => root,
       group   => root,
       mode    => 644,
       content => template('centrifydc/group.ignore.erb'),
-      require => Package['centrifydc'];
+      require => Package['CentrifyDC'];
   }
 
   service { 'centrifydc':
     ensure     => running,
-    require    => Package['centrifydc'],
+    require    => Package['CentrifyDC'],
     hasrestart => true,
     subscribe  => [
       File['/etc/centrifydc/centrifydc.conf'],
       File['/etc/centrifydc/users.allow'],
+      File['/etc/nsswitch.conf'],
+      File['/etc/centrifydc/ssh/sshd_config'],
       File['/etc/centrifydc/groups.allow'],
       File['/etc/centrifydc/user.ignore'],
       File['/etc/centrifydc/group.ignore'],
-      Package['centrifydc']]
+      Package['CentrifyDC']]
+  }
+
+
+  service { 'centrify-sshd':
+    ensure     => running,
+    require    => Package['CentrifyDC-openssh'],
+    hasrestart => true,
+    subscribe  => [
+      File['/etc/centrifydc/centrifydc.conf'],
+      File['/etc/centrifydc/users.allow'],
+      File['/etc/nsswitch.conf'],
+      File['/etc/centrifydc/ssh/sshd_config'],
+      File['/etc/centrifydc/groups.allow'],
+      File['/etc/centrifydc/user.ignore'],
+      File['/etc/centrifydc/group.ignore'],
+      Package['CentrifyDC-openssh']]
   }
 
 }
