@@ -3,7 +3,7 @@
 ## Overview
 
 This module manages the Centrify Express software installation and joining
-with an Active Directory domain.
+with an Active Directory domain. I have converted this module to a RedHat spin that nolonger will work with Ubuntu. However, I intend to have this module working with both distros soon. 
 
 ## Features
 
