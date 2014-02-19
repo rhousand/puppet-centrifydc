@@ -4,6 +4,8 @@
 #
 class centrifydc (
   $ad_domain    = $domain,
+  $ad_admin     = "Your AD Admin account",
+  $ad_admin_pw  = "Your AD Admin account password",
   $users_allow  = [],
   $groups_allow = [],
   $user_ignore  = [],
@@ -31,7 +33,7 @@ class centrifydc (
   exec { "adjoin":
     path    => $centrifydc::params::exec_path,
     returns => 15,
-    command => "adjoin -w -p ADD_YOUR_PASSWORD -u ADD_DOMAIN_ADMIN_USER@${ad_domain} -c ADD_YOUR_SERVERs_OU' -S ${ad_domain}",
+    command => "adjoin -w -p $ad_admin_pw -u $ad_admin -c 'OU=Linux Servers,DC=redventures,DC=net' -n $centrify_hostname -N $centrify_hostname  ${ad_domain}",
     unless  => "adinfo -d | grep ${ad_domain}",
     notify  => Exec["addns"]
   }
